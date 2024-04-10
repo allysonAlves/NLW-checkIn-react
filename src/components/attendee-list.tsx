@@ -10,11 +10,14 @@ import {
   MoreHorizontal,
   Search,
 } from "lucide-react";
+
 import { IconButton } from "./icon-button";
 import { Table } from "./table/table";
 import { TableHeader } from "./table/table-header";
 import { TableCell } from "./table/table-cell";
 import { TableRow } from "./table/table-row";
+import { MenuButton } from "./menu-button";
+import { useMessage } from "../context/MessageContext";
 
 dayjs.extend(relativeTime);
 dayjs.locale("pt-br");
@@ -48,23 +51,37 @@ export const AttendeeList = () => {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [total, setTotal] = useState(0);
 
+  const { showMessage } = useMessage();
+
   const totalPages = Math.ceil(total / 10); 
 
   useEffect(() => {
+    fetchAttendees();
+  }, [page, search]);
+
+  function fetchAttendees() {
     const url = new URL('http://localhost:3333/events/4e198939-c40a-4b84-a02a-8f2ee8b75b66/attendees');
 
     url.searchParams.set('pageIndex', String(page - 1));
 
     if(search)
-        url.searchParams.set('query', search);
+      url.searchParams.set('query', search);
 
     fetch(url)
-      .then((response) => response.json())
-      .then((data) => {
-        setAttendees(data.attendees);
-        setTotal(data.total);
-      });
-  }, [page, search]);
+    .then((response) => response.json())
+    .then((data) => {
+      setAttendees(data.attendees);
+      setTotal(data.total);
+    });
+  }
+
+  function handleCheckIn(attendee: Attendee){
+    fetch(`http://localhost:3333/attendees/${attendee.code}/check-in`)
+    .then(() => {
+      fetchAttendees();
+      showMessage('Check In do participante realizado com sucesso');
+    })
+  }
 
   function setCurrentSearch(search: string){
     const url = new URL(window.location.toString());
@@ -162,9 +179,20 @@ export const AttendeeList = () => {
                 )}
               </TableCell>
               <TableCell>
-                <IconButton transparent>
-                  <MoreHorizontal className="size-4" />
-                </IconButton>
+                <MenuButton 
+                  actions={[
+                    {
+                      title: "Check In",
+                      action: ()  => handleCheckIn(attendee),
+                      disabled: !!attendee.checkedInAt
+                    }
+                  ]}
+                >
+                  <IconButton transparent>
+                    <MoreHorizontal className="size-4" />
+                  </IconButton>                  
+                </MenuButton>                               
+
               </TableCell>
             </TableRow>
           ))}
